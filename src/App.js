@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import SimpleStorageContract from "./contracts/SimpleStorage.json";
 import getWeb3 from "./utils/getWeb3";
+import ThreeBox from './3box'
 import {
   Box,
   Link,
@@ -8,7 +9,8 @@ import {
   Heading,
   Text,
   Image,
-  Button
+  Button,
+  Loader
 } from 'rimble-ui';
 import NetworkIndicator from '@rimble/network-indicator';
 import ConnectionBanner from '@rimble/connection-banner';
@@ -21,6 +23,8 @@ import Player2Control from "./components/Player2Control";
 class App extends Component {
   state = { required_network: 4, // Hardcoded preset Rinkeby 4 and local 5777
             money_match_id: "1",
+            host_addr: "",
+            host_name: "",
             player1_name: "",
             player2_name: "",
             image_ipfs_hash: "",
@@ -48,6 +52,7 @@ class App extends Component {
             has_player2_cashed_out: false,
             winner_cut: 0,
             host_cut: 0,
+            loaded: false,
             web3: null, accounts: null, contract: null, network_id: 0 };
 
   constructor(props) {
@@ -62,15 +67,12 @@ class App extends Component {
   }
 
   async updateStats() {
-    console.log("a")
     if(this.state.network_id != this.state.required_network)
-    return;
+      return;
     
-    console.log(this.state.required_network);
-    console.log(this.state.network_id);
-      
     const { accounts, contract } = this.state;
     
+    const host_addr = await contract.methods.getHostAddress(this.state.money_match_id).call();
     const player1_name = await contract.methods.getPlayer1Name(this.state.money_match_id).call();
     const player2_name = await contract.methods.getPlayer2Name(this.state.money_match_id).call();
     const summary = await contract.methods.getSummary(this.state.money_match_id).call();
@@ -106,7 +108,18 @@ class App extends Component {
     {
       my_player2_earnings = 0;
     }
+
+    // 3box stuff
+    const host_profile = await ThreeBox.getProfile(host_addr);
+    var host_name = "";
+    if(host_profile.name)
+    {
+      host_name = host_profile.name;
+    }
+
     this.setState({
+      host_addr: host_addr,
+      host_name: host_name,
       player1_name: this.state.web3.utils.hexToUtf8(player1_name),
       player2_name: this.state.web3.utils.hexToUtf8(player2_name),
       summary: summary,
@@ -131,7 +144,8 @@ class App extends Component {
       has_player1_cashed_out: has_player1_cashed_out,
       has_player2_cashed_out: has_player2_cashed_out,
       host_cut: this.state.web3.utils.fromWei(host_cut,'ether'),
-      winner_cut: this.state.web3.utils.fromWei(winner_cut,'ether')
+      winner_cut: this.state.web3.utils.fromWei(winner_cut,'ether'),
+      loaded: true
     });
   }
 
@@ -253,7 +267,12 @@ class App extends Component {
             onWeb3Fallback={window.ethereum == null}
           />
         </Card>
-        {this.state.web3 &&
+        {this.state.web3 && !this.state.loaded &&
+          <Card>
+            <Loader size="40px" />
+          </Card>
+        }
+        {this.state.web3 && this.state.loaded &&
           <Box>
             <Card>
               <Heading.h1>{this.state.player1_name} vs {this.state.player2_name}</Heading.h1>
@@ -327,45 +346,52 @@ class App extends Component {
               }
               <Heading.h3>About this money match</Heading.h3>
               <Text>{this.state.summary}</Text>
-              <Heading.h3>More community money matches</Heading.h3>
+              <Text>Hosted by&nbsp;
+                <Link href={"https://3box.io/" + this.state.host_addr}>
+                  {this.state.host_name}
+                </Link>
+              </Text>
               {this.state.is_host &&
                 <HostControl
-                  contract={this.state.contract}
-                  money_match_id={this.state.money_match_id}
-                  account={this.state.accounts[0]}
-                  player1_name={this.state.player1_name}
-                  player2_name={this.state.player2_name}
-                  is_cashout_enabled={this.state.is_cashout_enabled}
-                  host_cut={this.state.host_cut}
-                  has_host_cashed_out={this.state.has_host_cashed_out}
+                contract={this.state.contract}
+                money_match_id={this.state.money_match_id}
+                account={this.state.accounts[0]}
+                player1_name={this.state.player1_name}
+                player2_name={this.state.player2_name}
+                is_cashout_enabled={this.state.is_cashout_enabled}
+                host_cut={this.state.host_cut}
+                has_host_cashed_out={this.state.has_host_cashed_out}
                 />
               }
               {this.state.is_player1 &&
                 <Player1Control
-                  contract={this.state.contract}
-                  money_match_id={this.state.money_match_id}
-                  account={this.state.accounts[0]}
-                  is_player1_wins={this.state.is_player1_wins}
-                  player1_name={this.state.player1_name}
-                  is_cashout_enabled={this.state.is_cashout_enabled}
-                  winner_cut={this.state.winner_cut}
-                  has_player1_cashed_out={this.state.has_player1_cashed_out}
+                contract={this.state.contract}
+                money_match_id={this.state.money_match_id}
+                account={this.state.accounts[0]}
+                is_player1_wins={this.state.is_player1_wins}
+                player1_name={this.state.player1_name}
+                is_cashout_enabled={this.state.is_cashout_enabled}
+                winner_cut={this.state.winner_cut}
+                has_player1_cashed_out={this.state.has_player1_cashed_out}
                 />
               }
               {this.state.is_player2 &&
-                <Player2Control
-                  contract={this.state.contract}
-                  money_match_id={this.state.money_match_id}
-                  account={this.state.accounts[0]}
-                  is_player2_wins={this.state.is_player2_wins}
-                  player2_name={this.state.player2_name}
-                  is_cashout_enabled={this.state.is_cashout_enabled}
-                  winner_cut={this.state.winner_cut}
-                  has_player2_cashed_out={this.state.has_player2_cashed_out}
-                />
+                <Box>
+                  <Player2Control
+                    contract={this.state.contract}
+                    money_match_id={this.state.money_match_id}
+                    account={this.state.accounts[0]}
+                    is_player2_wins={this.state.is_player2_wins}
+                    player2_name={this.state.player2_name}
+                    is_cashout_enabled={this.state.is_cashout_enabled}
+                    winner_cut={this.state.winner_cut}
+                    has_player2_cashed_out={this.state.has_player2_cashed_out}
+                  />
+                </Box>
               }
             </Card>
             <Card>
+              <Heading.h3>More money matches</Heading.h3>
               {otherMoneyMatches}
               <Link href="/host">
                 Host a money match
@@ -375,8 +401,9 @@ class App extends Component {
         }
         {!this.state.web3 &&
           <Card>
-            <Text>Loading Web3, accounts, and contract...</Text>
-            <Button onClick={this.connectToWeb3}>Connect your Ethereum Account</Button>
+            <Heading.h3>Connect your ethereum account</Heading.h3>
+            <Text>Atomic Buster needs your permission to browse money matches.</Text>
+            <Button onClick={this.connectToWeb3}>Connect</Button>
           </Card>
         }
       </Box>
