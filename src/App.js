@@ -112,7 +112,7 @@ class App extends Component {
     // 3box stuff
     const host_profile = null;// await ThreeBox.getProfile(host_addr);
     var host_name = "";
-    if(host_profile.name)
+    if(host_profile && host_profile.name)
     {
       host_name = host_profile.name;
     }
