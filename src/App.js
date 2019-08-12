@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import SimpleStorageContract from "./contracts/SimpleStorage.json";
 import getWeb3 from "./utils/getWeb3";
-//import ThreeBox from './3box'
+import ThreeBox from './3box'
 import {
   Box,
   Link,
@@ -110,7 +110,7 @@ class App extends Component {
     }
 
     // 3box stuff
-    const host_profile = null;// await ThreeBox.getProfile(host_addr);
+    const host_profile = await ThreeBox.getProfile(host_addr);
     var host_name = "";
     if(host_profile && host_profile.name)
     {
